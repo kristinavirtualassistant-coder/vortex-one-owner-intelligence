@@ -1,0 +1,6 @@
+{
+  "name": "Vortex One Owner Intelligence",
+  "description": "Web-hosted property intelligence, GIS parcel search, corporate entity resolution, OSINT skip-tracing, batch CSV enrichment, and lead scoring platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Leaflet Map Custom Styling Overrides for Clean Minimalism */
+.leaflet-container {
+  background: #f8fafc !important;
+  font-family: inherit !important;
+}
+
+.leaflet-tile-pane {
+  filter: contrast(1.05) saturate(0.9);
+}
+
+.custom-map-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Custom Scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
