@@ -15,17 +15,25 @@ import {
   ChevronRight,
   RefreshCw,
   SlidersHorizontal,
-  Download
+  Download,
+  Scale,
+  ArrowRight
 } from 'lucide-react';
 
 interface BulkAreaSearchProps {
   onSelectProperty: (propertyKey: string) => void;
   onRefreshCounts: () => void;
+  compareKeys?: string[];
+  onToggleCompare?: (propertyKey: string) => void;
+  onCompareMultiple?: (propertyKeys: string[]) => void;
 }
 
 export const BulkAreaSearch: React.FC<BulkAreaSearchProps> = ({
   onSelectProperty,
   onRefreshCounts,
+  compareKeys = [],
+  onToggleCompare,
+  onCompareMultiple,
 }) => {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -180,11 +188,20 @@ export const BulkAreaSearch: React.FC<BulkAreaSearchProps> = ({
 
           <div className="flex items-center space-x-2.5">
             {selectedKeys.length > 0 && (
-              <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 px-3.5 py-2 rounded-xl">
+              <div className="flex flex-wrap items-center gap-2 bg-blue-50 border border-blue-200 px-3.5 py-2 rounded-xl">
                 <span className="text-sm font-bold text-blue-900">{selectedKeys.length} Selected</span>
+                {onCompareMultiple && (
+                  <button
+                    onClick={() => onCompareMultiple(selectedKeys)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center gap-1.5"
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>Compare ({selectedKeys.length})</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowBatchModal(true)}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs"
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 rounded-lg text-xs font-bold shadow-xs"
                 >
                   Save Selected
                 </button>
@@ -385,7 +402,7 @@ export const BulkAreaSearch: React.FC<BulkAreaSearchProps> = ({
                   </div>
 
                   {/* Right Metrics & Actions */}
-                  <div className="flex items-center justify-between md:justify-end space-x-6 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-blue-100">
+                  <div className="flex items-center justify-between md:justify-end space-x-4 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-blue-100">
                     <div className="text-right">
                       <div className="text-xs text-slate-500 uppercase font-mono font-semibold">Assessed Value</div>
                       <div className="text-lg font-black text-slate-900 font-mono">
@@ -396,13 +413,33 @@ export const BulkAreaSearch: React.FC<BulkAreaSearchProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onSelectProperty(key)}
-                      className="px-5 py-3 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-900 text-sm font-bold rounded-xl transition-all flex items-center space-x-2 shadow-xs"
-                    >
-                      <span>Inspect</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      {onToggleCompare && (
+                        <button
+                          onClick={() => onToggleCompare(key)}
+                          className={`p-2.5 rounded-xl border transition-all ${
+                            compareKeys.includes(key) || compareKeys.includes(key.replace(/^oc:/, ''))
+                              ? 'bg-blue-100 text-blue-900 border-blue-300 shadow-xs'
+                              : 'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-900 border-slate-200'
+                          }`}
+                          title={
+                            compareKeys.includes(key) || compareKeys.includes(key.replace(/^oc:/, ''))
+                              ? 'Remove from Compare'
+                              : 'Add to Compare'
+                          }
+                        >
+                          <Scale className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => onSelectProperty(key)}
+                        className="px-4 py-2.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-900 text-sm font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-xs"
+                      >
+                        <span>Inspect</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

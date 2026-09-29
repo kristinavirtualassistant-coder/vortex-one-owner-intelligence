@@ -9,14 +9,17 @@ import {
   ShieldCheck,
   TrendingUp,
   Cpu,
+  Scale,
 } from 'lucide-react';
 import { AuthWidget } from './AuthWidget';
+import { DatabaseStatus } from './DatabaseStatus';
 
 interface HeaderProps {
-  activeTab: 'search' | 'bulk' | 'portfolios' | 'research' | 'saved' | 'audit';
-  setActiveTab: (tab: 'search' | 'bulk' | 'portfolios' | 'research' | 'saved' | 'audit') => void;
+  activeTab: 'search' | 'bulk' | 'portfolios' | 'research' | 'saved' | 'audit' | 'compare';
+  setActiveTab: (tab: 'search' | 'bulk' | 'portfolios' | 'research' | 'saved' | 'audit' | 'compare') => void;
   savedCount: number;
   researchCount: number;
+  compareCount?: number;
   onOpenBatchModal: () => void;
 }
 
@@ -25,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   savedCount,
   researchCount,
+  compareCount = 0,
   onOpenBatchModal,
 }) => {
   return (
@@ -44,19 +48,23 @@ export const Header: React.FC<HeaderProps> = ({
                   </h1>
                 </div>
                 <p className="text-sm text-slate-600 font-medium">
-                  Web-Hosted Property Intelligence & Owner Resolution Platform
+                  CMC VR1
                 </p>
               </div>
             </div>
 
-            {/* Mobile Batch Trigger */}
-            <button
-              onClick={onOpenBatchModal}
-              className="md:hidden flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Batch CSV</span>
-            </button>
+            {/* Mobile Actions */}
+            <div className="md:hidden flex items-center space-x-2">
+              <DatabaseStatus />
+              <AuthWidget />
+              <button
+                onClick={onOpenBatchModal}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
@@ -127,6 +135,23 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('compare')}
+              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all relative ${
+                activeTab === 'compare'
+                  ? 'bg-white text-blue-900 font-bold shadow-sm border border-blue-300'
+                  : 'text-slate-700 hover:text-blue-900 hover:bg-blue-100/60'
+              }`}
+            >
+              <Scale className="w-4 h-4 text-blue-600" />
+              <span>Compare</span>
+              {compareCount > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-xs">
+                  {compareCount}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab('audit')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 activeTab === 'audit'
@@ -141,6 +166,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Platform Actions */}
           <div className="hidden md:flex items-center space-x-3">
+            <DatabaseStatus />
+
             <AuthWidget />
 
             <button

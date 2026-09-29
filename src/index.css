@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+}
+
 /* Leaflet Map Custom Styling Overrides for Clean Minimalism */
 .leaflet-container {
   background: #f8fafc !important;
@@ -24,4 +33,66 @@
   scrollbar-width: none;
 }
 
+/* ==========================================
+   PRINTER-FRIENDLY & PDF REPORT MEDIA STYLES
+   ========================================== */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 12mm 15mm;
+  }
 
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide interactive shell, navbars, sidebars, buttons, and popups */
+  aside,
+  header,
+  nav,
+  button:not(.print-include),
+  input,
+  textarea,
+  select,
+  .no-print,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Expand full container width */
+  main,
+  .print\\:w-full,
+  div[class*="lg:pl-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Avoid awkward page breaks */
+  .break-inside-avoid,
+  .print-avoid-break,
+  .grid,
+  .rounded-2xl {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Ensure card borders and contrast for ink clarity */
+  .bg-white,
+  .bg-slate-50,
+  .bg-slate-100 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Make sure links don't show URLs */
+  a[href]:after {
+    content: "" !important;
+  }
+}

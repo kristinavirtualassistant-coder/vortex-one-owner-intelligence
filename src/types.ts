@@ -207,3 +207,75 @@ export interface BatchProcessingProgress {
   logs: string[];
   status: 'idle' | 'running' | 'completed' | 'failed';
 }
+
+export interface GisAuditRecord {
+  countyName: string;
+  fips: string;
+  sourceConfigured: boolean;
+  sourceName?: string;
+  sourceType?: string;
+  status: 'VERIFIED' | 'NOT_CONFIGURED' | 'FAILED' | 'SCHEMA_ERROR';
+  schemaStatus: 'VALID' | 'NOT_APPLICABLE' | 'INVALID';
+  recordCount: number;
+  lastVerified?: string;
+  lastSuccess?: string;
+  lastFailure?: string;
+  error?: string;
+}
+
+export interface DatabaseConnectionStatus {
+  connected: boolean;
+  status: 'connected' | 'fallback' | 'disconnected';
+  strictMode: boolean;
+  indicator: 'green' | 'red' | 'amber';
+  driver: 'postgres' | 'embedded_fallback' | 'none';
+  latencyMs: number;
+  pool: {
+    totalCount: number;
+    idleCount: number;
+    waitingCount: number;
+  };
+  postgisInstalled?: boolean;
+  databaseUrlConfigured: boolean;
+  error?: string;
+  timestamp: string;
+}
+
+export interface GisFreshnessInfo {
+  lastSyncAt: string;
+  county: string;
+  fipsCode: string;
+  sourceName: string;
+  status: 'VERIFIED' | 'PROBABLE' | 'DEGRADED';
+  recordCount: number;
+  lastVerifiedLatencyMs: number;
+}
+
+export interface ActivityItem {
+  id: string;
+  type: 'search' | 'save' | 'enrichment' | 'research' | 'sync';
+  title: string;
+  detail: string;
+  timestamp: string;
+  linkQuery?: string;
+  badge?: string;
+}
+
+export interface RecentSearchItem {
+  id: string;
+  query: string;
+  title: string;
+  subtitle?: string;
+  apn?: string;
+  timestamp: string;
+}
+
+export interface SearchSuggestion {
+  type: 'address' | 'owner' | 'apn' | 'city' | 'property';
+  title: string;
+  subtitle: string;
+  display: string;
+  searchKey: string;
+  apn?: string;
+  category: string;
+}

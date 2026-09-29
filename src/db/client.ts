@@ -4,11 +4,15 @@ import { normalizeApn, normalizeEntityName, classifyOwnerType, computeSha256Sync
 const { Pool } = pkg;
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/vortex_one';
+const isProduction = process.env.NODE_ENV === 'production';
+const isStrictMode = process.env.DATABASE_STRICT_MODE === 'true';
 
 export const pool = new Pool({
   connectionString,
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 2000),
+  idleTimeoutMillis: Number(process.env.DATABASE_IDLE_TIMEOUT_MS || 10000),
+  max: Number(process.env.DATABASE_POOL_MAX || 20),
 });
 
 let useInMemoryFallback = false;
@@ -17,10 +21,12 @@ let useInMemoryFallback = false;
 const MEM_COUNTIES = [
   { id: 'c-059', state_code: 'CA', county_code: '059', fips_code: '06059', county_name: 'Orange', state_name: 'California', is_active: true },
   { id: 'c-037', state_code: 'CA', county_code: '037', fips_code: '06037', county_name: 'Los Angeles', state_name: 'California', is_active: false },
+  { id: 'c-073', state_code: 'CA', county_code: '073', fips_code: '06073', county_name: 'San Diego', state_name: 'California', is_active: false },
+  { id: 'c-065', state_code: 'CA', county_code: '065', fips_code: '06065', county_name: 'Riverside', state_name: 'California', is_active: false },
 ];
 
 const MEM_SOURCES = [
-  { id: 's-gis', county_id: 'c-059', source_category: 'COUNTY_GIS', source_name: 'Orange County GIS REST Portal', agency_name: 'Orange County IT / GIS', endpoint_url: 'https://gis.ocgov.com/', status: 'VERIFIED', schema_status: 'VALIDATED', record_count: 850000, last_verified_at: new Date().toISOString(), last_success_at: new Date().toISOString() },
+  { id: 's-gis', county_id: 'c-059', source_category: 'COUNTY_GIS', source_name: 'Orange County GIS REST Portal', agency_name: 'Orange County IT / GIS', endpoint_url: 'https://gis.ocgov.com/arcgis/rest/services/Public/OC_Parcels/MapServer/0', status: 'VERIFIED', schema_status: 'VALIDATED', record_count: 850000, last_verified_at: new Date().toISOString(), last_success_at: new Date().toISOString() },
   { id: 's-assessor', county_id: 'c-059', source_category: 'COUNTY_ASSESSOR', source_name: 'Orange County Assessor Secured Roll', agency_name: 'Orange County Assessor Office', endpoint_url: 'https://www.ocgov.com/gov/assessor', status: 'VERIFIED', schema_status: 'VALIDATED', record_count: 850000, last_verified_at: new Date().toISOString(), last_success_at: new Date().toISOString() },
 ];
 
@@ -175,6 +181,17 @@ RAW_SEED_PROPS.forEach((p, idx) => {
   });
 });
 
+function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 function handleInMemoryQuery(text: string, params?: any[]) {
   const lower = text.toLowerCase().trim();
 
@@ -187,7 +204,6 @@ function handleInMemoryQuery(text: string, params?: any[]) {
   }
 
   if (lower.includes('from source_registry') && lower.includes('counties')) {
-    // join counties and source_registry for audit
     const rows = MEM_COUNTIES.map(c => {
       const src = MEM_SOURCES.find(s => s.county_id === c.id);
       return {
@@ -209,6 +225,91 @@ function handleInMemoryQuery(text: string, params?: any[]) {
         last_success_at: src?.last_success_at || null,
         last_failure_at: null,
         record_count: src?.record_count || 0,
+      };
+    });
+    return { rows, rowCount: rows.length };
+  }
+
+  // Spatial Bounding Box Search
+  if (lower.includes('st_makeenvelope') || (lower.includes('longitude >=') && lower.includes('latitude >='))) {
+    const minLng = Number(params?.[0] ?? -180);
+    const minLat = Number(params?.[1] ?? -90);
+    const maxLng = Number(params?.[2] ?? 180);
+    const maxLat = Number(params?.[3] ?? 90);
+    const limit = Number(params?.[4] ?? 50);
+
+    const matched = MEM_PROPERTIES.filter(p => {
+      if (p.latitude === null || p.longitude === null) return false;
+      return p.longitude >= minLng && p.latitude >= minLat && p.longitude <= maxLng && p.latitude <= maxLat;
+    }).slice(0, limit);
+
+    const rows = matched.map(p => {
+      const parcel = MEM_PARCELS.find(pa => pa.property_id === p.id);
+      const op = MEM_OWNER_PROPERTY.find(op => op.property_id === p.id);
+      const owner = MEM_OWNERS.find(o => o.id === op?.owner_id);
+      const saved = MEM_SAVED_PROPERTIES.find(sp => sp.property_id === p.id);
+      return {
+        ...p,
+        apn: parcel?.apn,
+        canonical_apn: parcel?.canonical_apn,
+        raw_apn: parcel?.raw_apn,
+        land_assessed_value: parcel?.land_assessed_value,
+        improvement_assessed_value: parcel?.improvement_assessed_value,
+        total_assessed_value: parcel?.total_assessed_value,
+        use_code: parcel?.use_code,
+        year_built: parcel?.year_built,
+        units: parcel?.units,
+        bedrooms: parcel?.bedrooms,
+        owner_id: owner?.id,
+        owner_name: owner?.full_name,
+        mailing_address: owner?.mailing_address,
+        owner_type: owner?.owner_type,
+        saved_at: saved?.saved_at,
+        saved_note: saved?.note,
+      };
+    });
+    return { rows, rowCount: rows.length };
+  }
+
+  // Spatial Radius Search
+  if (lower.includes('st_dwithin') || lower.includes('distance_meters') || lower.includes('6371000')) {
+    const centerLat = Number(params?.[0] ?? 0);
+    const centerLng = Number(params?.[1] ?? 0);
+    const radiusMeters = Number(params?.[2] ?? 5000);
+    const limit = Number(params?.[3] ?? 50);
+
+    const withDist = MEM_PROPERTIES.map(p => {
+      if (p.latitude === null || p.longitude === null) return { ...p, distance_meters: Infinity };
+      const dist = calculateHaversineDistance(centerLat, centerLng, p.latitude, p.longitude);
+      return { ...p, distance_meters: Math.round(dist) };
+    }).filter(p => p.distance_meters <= radiusMeters);
+
+    withDist.sort((a, b) => a.distance_meters - b.distance_meters);
+    const limited = withDist.slice(0, limit);
+
+    const rows = limited.map(p => {
+      const parcel = MEM_PARCELS.find(pa => pa.property_id === p.id);
+      const op = MEM_OWNER_PROPERTY.find(op => op.property_id === p.id);
+      const owner = MEM_OWNERS.find(o => o.id === op?.owner_id);
+      const saved = MEM_SAVED_PROPERTIES.find(sp => sp.property_id === p.id);
+      return {
+        ...p,
+        apn: parcel?.apn,
+        canonical_apn: parcel?.canonical_apn,
+        raw_apn: parcel?.raw_apn,
+        land_assessed_value: parcel?.land_assessed_value,
+        improvement_assessed_value: parcel?.improvement_assessed_value,
+        total_assessed_value: parcel?.total_assessed_value,
+        use_code: parcel?.use_code,
+        year_built: parcel?.year_built,
+        units: parcel?.units,
+        bedrooms: parcel?.bedrooms,
+        owner_id: owner?.id,
+        owner_name: owner?.full_name,
+        mailing_address: owner?.mailing_address,
+        owner_type: owner?.owner_type,
+        saved_at: saved?.saved_at,
+        saved_note: saved?.note,
       };
     });
     return { rows, rowCount: rows.length };
@@ -413,6 +514,26 @@ function handleInMemoryQuery(text: string, params?: any[]) {
     return { rows, rowCount: rows.length };
   }
 
+  // Insert into properties
+  if (lower.includes('insert into properties')) {
+    return { rows: [{ id: params?.[0] }], rowCount: 1 };
+  }
+
+  // Insert into parcels
+  if (lower.includes('insert into parcels')) {
+    return { rows: [{ id: params?.[0] }], rowCount: 1 };
+  }
+
+  // Insert into owners
+  if (lower.includes('insert into owners')) {
+    return { rows: [{ id: params?.[0] }], rowCount: 1 };
+  }
+
+  // Insert into provenance
+  if (lower.includes('insert into provenance')) {
+    return { rows: [{ id: params?.[0] }], rowCount: 1 };
+  }
+
   return { rows: [], rowCount: 0 };
 }
 
@@ -430,8 +551,13 @@ export async function query(text: string, params?: any[]) {
     }
     return res;
   } catch (error: any) {
+    if (isStrictMode && isProduction) {
+      console.error('DATABASE STRICT MODE: PostgreSQL query failed in production:', error.message);
+      throw error;
+    }
+
     if (error.code === 'ECONNREFUSED' || error.message?.includes('ECONNREFUSED') || error.message?.includes('connect')) {
-      console.warn('PostgreSQL connection refused (ECONNREFUSED). Automatically switching to Vortex One High-Performance Embedded In-Memory Store.');
+      console.warn('PostgreSQL connection refused (ECONNREFUSED). Switching to Vortex One Embedded Database Engine.');
       useInMemoryFallback = true;
       return handleInMemoryQuery(text, params);
     }
@@ -441,15 +567,112 @@ export async function query(text: string, params?: any[]) {
 }
 
 export async function getClient() {
+  if (useInMemoryFallback) {
+    return {
+      query: async (t: string, p?: any[]) => handleInMemoryQuery(t, p),
+      release: () => {},
+    } as any;
+  }
+
   try {
     const client = await pool.connect();
     return client;
-  } catch (err) {
+  } catch (err: any) {
+    if (isStrictMode && isProduction) {
+      throw err;
+    }
     console.warn('PostgreSQL connect failed, returning fallback client.');
     useInMemoryFallback = true;
     return {
       query: async (t: string, p?: any[]) => handleInMemoryQuery(t, p),
       release: () => {},
     } as any;
+  }
+}
+
+export function isUsingFallback(): boolean {
+  return useInMemoryFallback;
+}
+
+export interface DatabaseConnectionStatus {
+  connected: boolean;
+  status: 'connected' | 'fallback' | 'disconnected';
+  strictMode: boolean;
+  indicator: 'green' | 'red' | 'amber';
+  driver: 'postgres' | 'embedded_fallback' | 'none';
+  latencyMs: number;
+  pool: {
+    totalCount: number;
+    idleCount: number;
+    waitingCount: number;
+  };
+  postgisInstalled?: boolean;
+  databaseUrlConfigured: boolean;
+  error?: string;
+  timestamp: string;
+}
+
+export async function checkDatabaseStatus(): Promise<DatabaseConnectionStatus> {
+  const strictMode = process.env.DATABASE_STRICT_MODE === 'true';
+  const start = Date.now();
+
+  try {
+    const client = await pool.connect();
+    let postgisInstalled = false;
+    try {
+      await client.query('SELECT 1 as live_check');
+      try {
+        const gisCheck = await client.query("SELECT PostGIS_Full_Version() as gis");
+        postgisInstalled = Boolean(gisCheck.rows?.[0]?.gis);
+      } catch {
+        postgisInstalled = false;
+      }
+      const latencyMs = Date.now() - start;
+      return {
+        connected: true,
+        status: 'connected',
+        strictMode,
+        indicator: 'green',
+        driver: 'postgres',
+        latencyMs,
+        pool: {
+          totalCount: pool.totalCount,
+          idleCount: pool.idleCount,
+          waitingCount: pool.waitingCount,
+        },
+        postgisInstalled,
+        databaseUrlConfigured: Boolean(process.env.DATABASE_URL),
+        timestamp: new Date().toISOString(),
+      };
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    const latencyMs = Date.now() - start;
+    const isFallback = isUsingFallback();
+    
+    // In strict mode, if PostgreSQL is disconnected, it is strictly a RED failure.
+    // In non-strict mode, if PostgreSQL is disconnected and fallback is active, we flag amber with clear explanation, or red if strict.
+    const indicator: 'green' | 'red' | 'amber' = strictMode ? 'red' : 'red';
+    const status = isFallback ? 'fallback' : 'disconnected';
+    const driver = isFallback ? 'embedded_fallback' : 'none';
+
+    return {
+      connected: false,
+      status,
+      strictMode,
+      indicator,
+      driver,
+      latencyMs,
+      pool: {
+        totalCount: pool.totalCount,
+        idleCount: pool.idleCount,
+        waitingCount: pool.waitingCount,
+      },
+      postgisInstalled: false,
+      databaseUrlConfigured: Boolean(process.env.DATABASE_URL),
+      error: err?.message || 'PostgreSQL connection failed or is unavailable.',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

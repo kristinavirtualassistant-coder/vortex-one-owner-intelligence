@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, CheckCircle2, Clock, AlertTriangle, UserCheck, ShieldAlert, ArrowRight } from 'lucide-react';
+import {
+  ClipboardList,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  UserCheck,
+  ShieldAlert,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 import { ResearchTask } from '../types';
 
 interface ResearchQueueViewProps {
@@ -40,88 +49,95 @@ export const ResearchQueueView: React.FC<ResearchQueueViewProps> = ({ onSelectEn
     }
   };
 
+  const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-white border border-blue-200 rounded-3xl p-6 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-amber-600" />
-            <span>Automated Research Tasks & Public Record Verification Queue</span>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-amber-600" />
+            <span>Research & Verification Tasks</span>
           </h2>
-          <p className="text-sm text-slate-600 mt-1">
-            Auto-generated research items for unverified corporate filings, missing contact discovery, or county clerk audits. Zero-fabrication enforcement.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Automated verification triggers for unverified corporate filings, contact discovery, and public record integrity checks.
           </p>
         </div>
 
-        <div className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-mono font-bold flex items-center gap-2 shadow-xs">
-          <Clock className="w-4 h-4 text-amber-600" />
-          <span>{tasks.filter((t) => t.status === 'PENDING').length} Pending Audit Tasks</span>
+        <div className="px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          <span>{pendingCount} Pending Tasks</span>
         </div>
       </div>
 
       {/* Task List */}
       {loading ? (
-        <div className="p-12 text-center text-slate-500 font-mono text-sm">
+        <div className="p-12 text-center text-slate-500 font-mono text-xs">
           Loading research tasks queue...
         </div>
       ) : tasks.length === 0 ? (
-        <div className="p-16 text-center bg-white border border-blue-200 rounded-3xl shadow-md space-y-3">
-          <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900">No Pending Research Tasks</h3>
-          <p className="text-sm text-slate-600">All current property records and corporate officer filings are fully verified.</p>
+        <div className="p-16 text-center bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
+          <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-800">No Pending Research Tasks</h3>
+          <p className="text-xs text-slate-500">
+            All current property records and corporate officer filings are fully verified.
+          </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="p-6 bg-white border border-blue-200 hover:border-blue-300 rounded-3xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-sm transition-all"
+              className="p-5 bg-white border border-slate-200 hover:border-blue-300 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs transition-all"
             >
-              <div className="space-y-2 flex-1 min-w-0">
+              <div className="space-y-1.5 flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase tracking-wider">
                     {task.taskType}
                   </span>
 
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                       task.priority === 'HIGH'
-                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                        : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                        : 'bg-blue-50 text-blue-800 border border-blue-200'
                     }`}
                   >
                     {task.priority} PRIORITY
                   </span>
+
+                  {task.status === 'COMPLETED' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      COMPLETED
+                    </span>
+                  )}
                 </div>
 
-                <h4 className="text-base font-bold text-slate-900 truncate font-sans">
+                <h4 className="text-sm font-bold text-slate-900 truncate">
                   Target Entity: {task.targetEntityName}
                 </h4>
 
-                <p className="text-slate-600 font-sans text-sm leading-relaxed">{task.reason}</p>
+                <p className="text-slate-600">{task.reason}</p>
               </div>
 
-              <div className="flex items-center space-x-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
+              {/* Actions */}
+              <div className="flex items-center space-x-2 shrink-0">
                 <button
                   onClick={() => onSelectEntity(task.targetEntityName)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold flex items-center space-x-1.5 transition-all"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-800 border border-slate-200 text-xs font-semibold flex items-center gap-1 transition-all"
                 >
-                  <span>Inspect</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Inspect Entity</span>
+                  <ArrowRight className="w-3 h-3" />
                 </button>
 
-                {task.status === 'COMPLETED' ? (
-                  <span className="px-4 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-sm flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Completed
-                  </span>
-                ) : (
+                {task.status !== 'COMPLETED' && (
                   <button
                     onClick={() => handleCompleteTask(task.id)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1"
                   >
-                    Mark Verified
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Mark Resolved</span>
                   </button>
                 )}
               </div>

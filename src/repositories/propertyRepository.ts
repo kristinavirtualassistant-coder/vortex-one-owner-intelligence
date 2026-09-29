@@ -117,6 +117,55 @@ export const propertyRepository = {
     return res.rows;
   },
 
+  async findByBoundingBox(minLng: number, minLat: number, maxLng: number, maxLat: number, limit = 50) {
+    const safeLimit = Math.min(Math.max(limit, 1), 200);
+    const res = await query(
+      `SELECT p.*, pa.apn, pa.canonical_apn, pa.raw_apn, pa.land_assessed_value, pa.improvement_assessed_value,
+              pa.total_assessed_value, pa.use_code, pa.year_built, pa.units, pa.bedrooms,
+              o.id as owner_id, o.full_name as owner_name, o.mailing_address, o.owner_type,
+              sp.saved_at, sp.note as saved_note
+       FROM properties p
+       JOIN parcels pa ON p.id = pa.property_id
+       LEFT JOIN owner_property op ON p.id = op.property_id AND op.is_current = true
+       LEFT JOIN owners o ON op.owner_id = o.id
+       LEFT JOIN saved_properties sp ON p.id = sp.property_id
+       WHERE (
+         (p.geom IS NOT NULL AND ST_Within(p.geom, ST_MakeEnvelope($1, $2, $3, $4, 4326)))
+         OR (p.longitude >= $1 AND p.latitude >= $2 AND p.longitude <= $3 AND p.latitude <= $4)
+       )
+       ORDER BY pa.total_assessed_value DESC
+       LIMIT $5`,
+      [minLng, minLat, maxLng, maxLat, safeLimit]
+    );
+    return res.rows;
+  },
+
+  async findByRadius(lat: number, lng: number, radiusMeters = 5000, limit = 50) {
+    const safeLimit = Math.min(Math.max(limit, 1), 200);
+    const safeRadius = Math.min(Math.max(radiusMeters, 10), 100000);
+    const res = await query(
+      `SELECT p.*, pa.apn, pa.canonical_apn, pa.raw_apn, pa.land_assessed_value, pa.improvement_assessed_value,
+              pa.total_assessed_value, pa.use_code, pa.year_built, pa.units, pa.bedrooms,
+              o.id as owner_id, o.full_name as owner_name, o.mailing_address, o.owner_type,
+              sp.saved_at, sp.note as saved_note
+       FROM properties p
+       JOIN parcels pa ON p.id = pa.property_id
+       LEFT JOIN owner_property op ON p.id = op.property_id AND op.is_current = true
+       LEFT JOIN owners o ON op.owner_id = o.id
+       LEFT JOIN saved_properties sp ON p.id = sp.property_id
+       WHERE (
+         (p.geom IS NOT NULL AND ST_DWithin(p.geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3))
+         OR (
+           p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND
+           (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians($1)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($2)) + sin(radians($1)) * sin(radians(p.latitude)))))) <= $3
+         )
+       )
+       LIMIT $4`,
+      [lat, lng, safeRadius, safeLimit]
+    );
+    return res.rows;
+  },
+
   async getAutocompleteSuggestions(q: string) {
     const cleanQ = q.toUpperCase().trim();
     const res = await query(
