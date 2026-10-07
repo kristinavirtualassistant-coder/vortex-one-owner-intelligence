@@ -18,7 +18,6 @@ import {
   Info,
 } from 'lucide-react';
 import { NavPage } from './Sidebar';
-import { AuthWidget } from './AuthWidget';
 import { GisFreshnessInfo, SearchSuggestion } from '../types';
 
 interface TopHeaderProps {
@@ -468,11 +467,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         )}
 
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
-
-        {/* Auth status indicator */}
-        <div className="hidden lg:block">
-          <AuthWidget />
-        </div>
       </div>
     </header>
   );

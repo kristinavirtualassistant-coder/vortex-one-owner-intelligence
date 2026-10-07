@@ -25,7 +25,6 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { DatabaseStatus } from './DatabaseStatus';
-import { AuthWidget } from './AuthWidget';
 import { RecentSearchItem } from '../types';
 
 export type NavPage =
@@ -491,11 +490,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
           <DatabaseStatus />
         </div>
-        {!collapsed && (
-          <div className="pt-2 border-t border-slate-800/60">
-            <AuthWidget />
-          </div>
-        )}
       </div>
     </aside>
   );
