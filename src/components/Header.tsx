@@ -11,7 +11,6 @@ import {
   Cpu,
   Scale,
 } from 'lucide-react';
-import { AuthWidget } from './AuthWidget';
 import { DatabaseStatus } from './DatabaseStatus';
 
 interface HeaderProps {
@@ -56,7 +55,6 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile Actions */}
             <div className="md:hidden flex items-center space-x-2">
               <DatabaseStatus />
-              <AuthWidget />
               <button
                 onClick={onOpenBatchModal}
                 className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs"
@@ -167,8 +165,6 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Platform Actions */}
           <div className="hidden md:flex items-center space-x-3">
             <DatabaseStatus />
-
-            <AuthWidget />
 
             <button
               onClick={onOpenBatchModal}
